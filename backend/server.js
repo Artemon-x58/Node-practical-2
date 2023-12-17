@@ -10,15 +10,56 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middlewares/authMiddleware");
 const rolesModel = require("./models/rolesModel");
+const { engine } = require("express-handlebars");
+const sendEmail = require("./services/sendEmail");
 const app = express();
+
+app.use(express.static("public"));
+
+app.engine("handlebars", engine());
+app.set("view engine", "handlebars");
+app.set("views", "backend/views");
 
 app.use(express.urlencoded({ extended: false }));
 
 app.use(express.json());
 
+app.get("/", (req, res) => {
+  res.render("home");
+});
+
+app.get("/about", (req, res) => {
+  res.render("about");
+});
+
+app.get("/contact", (req, res) => {
+  res.render("contact");
+});
+
+app.post("/sended", async (req, res) => {
+  try {
+    const sended = await sendEmail(req.body);
+    if (sended) {
+      res.render("sended", {
+        message: "Contact form send success",
+        user: req.body.userName,
+        email: req.body.userEmail,
+      });
+    }
+  } catch (error) {
+    res.status(400).json({ code: 400, message: error.message });
+  }
+
+  // res.send(req.body);
+});
+
 app.use("/api/v1", require("./routes/carsRoutes"));
 
 // регистрация - сохранение пользователя в базе
+
+app.get("/register", (req, res) => {
+  res.render("register");
+});
 
 app.post(
   "/register",
@@ -47,11 +88,17 @@ app.post(
       password: hashPassword,
       roles: [roles.value],
     });
-    res.status(201).json({ code: 201, data: { email: newUser.email } });
+    // res.status(201).json({ code: 201, data: { email: newUser.email } });
+    res.status(201);
+    res.render("registrationSuccess");
   })
 );
 
 // аутинтефиция - проверка подлиности пользователя и пароля с тем что хранится в базе
+
+app.get("/login", (req, res) => {
+  res.render("login");
+});
 
 app.post(
   "/login",
@@ -79,9 +126,11 @@ app.post(
 
     user.token = token;
     await user.save();
-    res
-      .status(200)
-      .json({ code: 200, data: { email: user.email, token: user.token } });
+    // res
+    //   .status(200)
+    //   .json({ code: 200, data: { email: user.email, token: user.token } });
+    res.status(200);
+    res.render("loginSuccess");
   })
 );
 
